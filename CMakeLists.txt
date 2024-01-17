@@ -12,11 +12,15 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(lanelet2 REQUIRED)
 find_package(GDAL REQUIRED)
+find_package(GeographicLib REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 
 include_directories(include
         ${rclcpp_INCLUDE_DIRS}
         ${lanelet2_INCLUDE_DIRS}
+        ${GeographicLib_INCLUDE_DIRS}
+        ${nav_msgs_INCLUDE_DIRS}
 )
 
 # Lanelet2 Divider
@@ -25,6 +29,8 @@ add_executable(lanelet2_divider_exe
 ament_target_dependencies(lanelet2_divider_exe rclcpp lanelet2)
 target_link_libraries(lanelet2_divider_exe
         ${lanelet2_LIBRARIES}
+        ${GeographicLib_LIBRARIES}
+        ${nav_msgs_LIBRARIES}
         GDAL::GDAL)
 
 
