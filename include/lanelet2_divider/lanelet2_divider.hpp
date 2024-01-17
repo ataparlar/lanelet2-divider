@@ -7,7 +7,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include "nav_msgs/msg/path.hpp"
-#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 class Lanelet2Divider : public rclcpp::Node
 {
@@ -17,7 +17,8 @@ public:
 private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_100km_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_10km_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_points_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_polygons_;
 
   bool origin_init_ = false;
 };

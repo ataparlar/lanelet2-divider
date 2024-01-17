@@ -13,35 +13,25 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
 {
   path_pub_100km_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path_100km", 10);
   path_pub_10km_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path_10km", 10);
-  marker_pub_ =
-    this->create_publisher<visualization_msgs::msg::Marker>("mgrs_grid_marker_10km", 10);
+  marker_pub_points_ =
+    this->create_publisher<visualization_msgs::msg::Marker>("mgrs_grid_marker_points", 10);
+  marker_pub_polygons_ =
+    this->create_publisher<visualization_msgs::msg::MarkerArray>("mgrs_grid_marker_polygons", 10);
 
-  visualization_msgs::msg::Marker points, line_strip, line_list;
-  points.header.frame_id = line_strip.header.frame_id = line_list.header.frame_id = "map";
-  points.header.stamp = line_strip.header.stamp = line_list.header.stamp = this->get_clock()->now();
-  points.ns = line_strip.ns = line_list.ns = "points_and_lines";
-  points.action = line_strip.action = line_list.action = visualization_msgs::msg::Marker::ADD;
-
+  visualization_msgs::msg::MarkerArray polygons;
+  visualization_msgs::msg::Marker points, line_list;
+  points.header.frame_id = line_list.header.frame_id = "map";
+  points.header.stamp = line_list.header.stamp = this->get_clock()->now();
+  points.ns = "points";
+  points.action = line_list.action = visualization_msgs::msg::Marker::ADD;
   points.id = 0;
-  line_strip.id = 1;
-  line_list.id = 2;
-
   points.type = visualization_msgs::msg::Marker::POINTS;
-  line_strip.type = visualization_msgs::msg::Marker::LINE_STRIP;
   line_list.type = visualization_msgs::msg::Marker::LINE_LIST;
-
-  points.scale.x = 0.2;
-  points.scale.y = 0.2;
-
-  line_strip.scale.x = 0.1;
-  line_list.scale.x = 0.1;
-
-  points.color.g = 1.0f;
+  points.scale.x = 40;
+  points.scale.y = 40;
+  line_list.scale.x = 100;
+  points.color.b = 1.0f;
   points.color.a = 1.0;
-
-  line_strip.color.b = 1.0;
-  line_strip.color.a = 1.0;
-
   line_list.color.r = 1.0;
   line_list.color.a = 1.0;
 
@@ -106,6 +96,8 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
   path_10km_.header.stamp = this->get_clock()->now();
 
   for (auto & feat : gridLayer_) {
+    line_list.ns = feat->GetFieldAsString("MGRS_10");
+    int marker_id = 1;
     OGRGeometry * geometry = feat->GetGeometryRef();
     OGRMultiPolygon * multiPolygon = geometry->toMultiPolygon();
     for (OGRPolygon * polygon : multiPolygon) {
@@ -116,6 +108,15 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
           double local_x = x - origin_x;
           double local_y = y - origin_y;
 
+          geometry_msgs::msg::Point p;
+          p.x = local_x;
+          p.y = local_y;
+          p.z = 0;
+          points.points.push_back(p);
+          line_list.id = marker_id;
+          marker_id++;
+          line_list.points.push_back(p);
+
           geometry_msgs::msg::PoseStamped pose;
           pose.header.frame_id = "map";
           pose.header.stamp = this->get_clock()->now();
@@ -123,22 +124,16 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
           pose.pose.position.y = local_y;
           pose.pose.position.z = 0;
 
-          geometry_msgs::msg::Point p;
-          p.x = local_x;
-          p.y = local_y;
-          p.z = 0;
-          points.points.push_back(p);
-          line_strip.points.push_back(p);
-          line_list.points.push_back(p);
-
           path_10km_.poses.push_back(pose);
         }
       }
     }
+    line_list.points.pop_back();
+    polygons.markers.push_back(line_list);
+    line_list.points.clear();
 
-    marker_pub_->publish(points);
-    marker_pub_->publish(line_strip);
-    marker_pub_->publish(line_list);
+    marker_pub_points_->publish(points);
+    marker_pub_polygons_->publish(polygons);
     path_pub_10km_->publish(path_10km_);
   }
 };
