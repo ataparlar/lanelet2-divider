@@ -14,6 +14,7 @@ find_package(lanelet2 REQUIRED)
 find_package(GDAL REQUIRED)
 find_package(GeographicLib REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 
 include_directories(include
@@ -21,6 +22,7 @@ include_directories(include
         ${lanelet2_INCLUDE_DIRS}
         ${GeographicLib_INCLUDE_DIRS}
         ${nav_msgs_INCLUDE_DIRS}
+        ${visualization_msgs_INCLUDE_DIRS}
 )
 
 # Lanelet2 Divider
@@ -31,6 +33,7 @@ target_link_libraries(lanelet2_divider_exe
         ${lanelet2_LIBRARIES}
         ${GeographicLib_LIBRARIES}
         ${nav_msgs_LIBRARIES}
+        ${visualization_msgs_LIBRARIES}
         GDAL::GDAL)
 
 
