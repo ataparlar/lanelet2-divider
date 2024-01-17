@@ -40,6 +40,13 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
   path_.header.frame_id = "map";
   path_.header.stamp = this->get_clock()->now();
 
+  // 41.0873,28.8290
+  int zone;
+  bool northp;
+  double origin_x, origin_y, gamma, k;
+  GeographicLib::UTMUPS::Forward(41.0873, 28.8290, zone, northp, origin_x, origin_y, gamma, k);
+
+
   for (OGRPolygon * ist_poly : ist_polygons) {
     std::cout << ist_poly->getGeometryName() << std::endl;
     std::cout << "ist_poly:" << std::endl;
@@ -49,20 +56,9 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
       std::cout << "\t" << linearring->getGeometryName() << std::endl;
 
       for (const OGRPoint & point : linearring) {
-        double origin_x, origin_y, x, y;
-        if (!origin_init_) {
-          int zone;
-          bool northp;
-          double gamma, k;
-          GeographicLib::UTMUPS::Forward(
-            point.getY(), point.getX(), zone, northp, origin_x, origin_y, gamma, k);
-          origin_init_ = true;
-        } else {
-          int zone;
-          bool northp;
-          double gamma, k;
-          GeographicLib::UTMUPS::Forward(point.getY(), point.getX(), zone, northp, x, y, gamma, k);
-        }
+
+        double x, y;
+        GeographicLib::UTMUPS::Forward(point.getY(), point.getX(), zone, northp, x, y, gamma, k);
 
         double local_x = x - origin_x;
         double local_y = y - origin_y;
@@ -84,6 +80,7 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
         std::cout << "\t\tlocal_y: " << std::setprecision(12) << local_y << std::endl;
         std::cout << "\t\tpath_.poses.size: " << path_.poses.size() << std::endl;
 
+//        path_pub_->publish(path_);
 //        rclcpp::sleep_for(std::chrono::milliseconds(100));
       }
     }
