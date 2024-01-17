@@ -14,7 +14,8 @@ public:
   Lanelet2Divider();
 
 private:
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_100km_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_10km_;
 
   bool origin_init_ = false;
 };

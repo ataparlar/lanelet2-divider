@@ -11,7 +11,14 @@
 
 Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
 {
-  path_pub_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path", 10);
+  path_pub_100km_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path_100km", 10);
+  path_pub_10km_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path_10km", 10);
+
+  // 41.0873,28.8290
+  int zone;
+  bool northp;
+  double origin_x, origin_y, gamma, k;
+  GeographicLib::UTMUPS::Forward(41.0873, 28.8290, zone, northp, origin_x, origin_y, gamma, k);
 
   GDALAllRegister();
 
@@ -24,68 +31,112 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
     exit(1);
   }
 
-  OGRLayer * gridLayer;
-  gridLayer = poDS->GetLayerByName("35T_100km");
+    // 100 km Grid
+    OGRLayer * gridLayer;
+    gridLayer = poDS->GetLayerByName("35T_100km");
+    OGRFeature * ist_grid_feature = gridLayer->GetFeature(42);
+    std::cout << ist_grid_feature->GetFieldAsString("MGRS_100") << std::endl;  // 35TPF
+    OGRGeometry * ist_grid = ist_grid_feature->GetGeometryRef();
+    std::cout << ist_grid->getGeometryName() << std::endl;
+    OGRMultiPolygon * ist_polygons = ist_grid->toMultiPolygon();
+    std::cout << ist_polygons->getGeometryName() << std::endl;
 
-  OGRFeature * ist_grid_feature = gridLayer->GetFeature(42);
-  std::cout << ist_grid_feature->GetFieldAsString("MGRS_100") << std::endl;  // 35TPF
+    nav_msgs::msg::Path path_100km_;
+    path_100km_.header.frame_id = "map";
+    path_100km_.header.stamp = this->get_clock()->now();
 
-  OGRGeometry * ist_grid = ist_grid_feature->GetGeometryRef();
-  std::cout << ist_grid->getGeometryName() << std::endl;
+    for (OGRPolygon * ist_poly : ist_polygons) {
+      std::cout << ist_poly->getGeometryName() << std::endl;
+      std::cout << ist_poly->get_Area() << std::endl;
+      for (OGRLinearRing * linearring : ist_poly) {
+        std::cout << "\t" << linearring->getGeometryName() << std::endl;
+        for (const OGRPoint & point : linearring) {
+          double x, y;
+          GeographicLib::UTMUPS::Forward(point.getY(), point.getX(), zone, northp, x, y, gamma,
+          k);
 
-  OGRMultiPolygon * ist_polygons = ist_grid->toMultiPolygon();
-  std::cout << ist_polygons->getGeometryName() << std::endl;
+          double local_x = x - origin_x;
+          double local_y = y - origin_y;
 
-  nav_msgs::msg::Path path_;
-  path_.header.frame_id = "map";
-  path_.header.stamp = this->get_clock()->now();
+          geometry_msgs::msg::PoseStamped pose;
+          pose.header.frame_id = "map";
+          pose.header.stamp = this->get_clock()->now();
+          pose.pose.position.x = local_x;
+          pose.pose.position.y = local_y;
+          pose.pose.position.z = 0;
 
-  // 41.0873,28.8290
-  int zone;
-  bool northp;
-  double origin_x, origin_y, gamma, k;
-  GeographicLib::UTMUPS::Forward(41.0873, 28.8290, zone, northp, origin_x, origin_y, gamma, k);
+          path_100km_.poses.push_back(pose);
+
+          std::cout << "\t\t" << std::setprecision(12) << point.getGeometryName() << std::endl;
+          std::cout << "\t\tX: " << std::setprecision(12) << point.getX() << std::endl;
+          std::cout << "\t\tY: " << std::setprecision(12) << point.getY() << std::endl;
+          std::cout << "\t\tZ: " << std::setprecision(12) << point.getZ() << std::endl;
+          std::cout << "\t\tlocal_x: " << std::setprecision(12) << local_x << std::endl;
+          std::cout << "\t\tlocal_y: " << std::setprecision(12) << local_y << std::endl;
+          std::cout << "\t\tpath_100km_.poses.size: " << path_100km_.poses.size() << std::endl;
+        }
+      }
+      path_pub_100km_->publish(path_100km_);
+    }
 
 
-  for (OGRPolygon * ist_poly : ist_polygons) {
-    std::cout << ist_poly->getGeometryName() << std::endl;
-    std::cout << "ist_poly:" << std::endl;
-    std::cout << ist_poly->get_Area() << std::endl;
+  // 10 km Grids
+  OGRLayer * gridLayer_;
+  gridLayer_ = poDS->GetLayerByName("35T_10km");
+  std::cout << "Count before filter:  " << gridLayer_->GetFeatureCount() << std::endl;
+  gridLayer_->SetAttributeFilter("MGRS_10 LIKE '35TPF%'");
+  std::cout << "Count after filter:  " << gridLayer_->GetFeatureCount() << std::endl;
 
-    for (OGRLinearRing * linearring : ist_poly) {
-      std::cout << "\t" << linearring->getGeometryName() << std::endl;
+  nav_msgs::msg::Path path_10km_;
+  path_10km_.header.frame_id = "map";
+  path_10km_.header.stamp = this->get_clock()->now();
 
-      for (const OGRPoint & point : linearring) {
+  for (auto & feat : gridLayer_) {
+    std::string grid_name = feat->GetFieldAsString("MGRS_10");
 
-        double x, y;
-        GeographicLib::UTMUPS::Forward(point.getY(), point.getX(), zone, northp, x, y, gamma, k);
+    OGRGeometry * geometry = feat->GetGeometryRef();
 
-        double local_x = x - origin_x;
-        double local_y = y - origin_y;
+    OGRMultiPolygon * multiPolygon = geometry->toMultiPolygon();
 
-        geometry_msgs::msg::PoseStamped pose;
-        pose.header.frame_id = "map";
-        pose.header.stamp = this->get_clock()->now();
-        pose.pose.position.x = local_x;
-        pose.pose.position.y = local_y;
-        pose.pose.position.z = 0;
+    for (OGRPolygon * polygon : multiPolygon) {
+      std::cout << polygon->getGeometryName() << std::endl;
+      std::cout << "\tpolygon:" << std::endl;
+      std::cout << polygon->get_Area() << std::endl;
 
-        path_.poses.push_back(pose);
+      for (OGRLinearRing * linearring : polygon) {
+        std::cout << "\t\t" << linearring->getGeometryName() << std::endl;
 
-        std::cout << "\t\t" << std::setprecision(12) << point.getGeometryName() << std::endl;
-        std::cout << "\t\tX: " << std::setprecision(12) << point.getX() << std::endl;
-        std::cout << "\t\tY: " << std::setprecision(12) << point.getY() << std::endl;
-        std::cout << "\t\tZ: " << std::setprecision(12) << point.getZ() << std::endl;
-        std::cout << "\t\tlocal_x: " << std::setprecision(12) << local_x << std::endl;
-        std::cout << "\t\tlocal_y: " << std::setprecision(12) << local_y << std::endl;
-        std::cout << "\t\tpath_.poses.size: " << path_.poses.size() << std::endl;
+        for (const OGRPoint & point : linearring) {
+          double x, y;
+          GeographicLib::UTMUPS::Forward(point.getY(), point.getX(), zone, northp, x, y, gamma, k);
 
-//        path_pub_->publish(path_);
-//        rclcpp::sleep_for(std::chrono::milliseconds(100));
+          double local_x = x - origin_x;
+          double local_y = y - origin_y;
+
+          geometry_msgs::msg::PoseStamped pose;
+          pose.header.frame_id = "map";
+          pose.header.stamp = this->get_clock()->now();
+          pose.pose.position.x = local_x;
+          pose.pose.position.y = local_y;
+          pose.pose.position.z = 0;
+
+          path_10km_.poses.push_back(pose);
+
+          //          std::cout << "\t\t\t" << std::setprecision(12) << point.getGeometryName() <<
+          //          std::endl; std::cout << "\t\t\tX: " << std::setprecision(12) << point.getX()
+          //          << std::endl; std::cout << "\t\t\tY: " << std::setprecision(12) <<
+          //          point.getY() << std::endl; std::cout << "\t\t\tZ: " << std::setprecision(12)
+          //          << point.getZ() << std::endl; std::cout << "\t\t\tpath_100km_.poses.size: " <<
+          //          path_10km_.poses.size() << std::endl;
+
+          //        path_pub_->publish(path_100km_);
+          //        rclcpp::sleep_for(std::chrono::milliseconds(100));
+        }
       }
     }
+
+    path_pub_10km_->publish(path_10km_);
   }
-  path_pub_->publish(path_);
 };
 
 int main(int argc, char * argv[])
