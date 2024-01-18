@@ -3,13 +3,23 @@
 //
 
 #include "lanelet2_divider/lanelet2_divider.hpp"
+#include "lanelet2_divider/mgrs_projector.hpp"
 
 #include "GeographicLib/UTMUPS.hpp"
-#include "ogrsf_frmts.h"
 
+#include "ogrsf_frmts.h"
 #include <ogr_feature.h>
 
-Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
+#include "lanelet2_io/Io.h"
+#include <lanelet2_io/io_handlers/Writer.h>
+
+
+
+namespace lanelet2_divider
+{
+
+Lanelet2Divider::Lanelet2Divider(const rclcpp::NodeOptions & options)
+: Node("lanelet2_divider", options)
 {
   path_pub_100km_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path_100km", 10);
   path_pub_10km_ = this->create_publisher<nav_msgs::msg::Path>("mgrs_grid_path_10km", 10);
@@ -35,11 +45,12 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
   line_list.color.r = 1.0;
   line_list.color.a = 1.0;
 
-  // 41.0873,28.8290
+  // 41.087436029,28.785880712
   int zone;
   bool northp;
   double origin_x, origin_y, gamma, k;
-  GeographicLib::UTMUPS::Forward(41.0873, 28.8290, zone, northp, origin_x, origin_y, gamma, k);
+  GeographicLib::UTMUPS::Forward(
+    41.087436029, 28.785880712, zone, northp, origin_x, origin_y, gamma, k);
 
   GDALAllRegister();
 
@@ -135,13 +146,15 @@ Lanelet2Divider::Lanelet2Divider() : Node("lanelet2_divider")
     marker_pub_points_->publish(points);
     marker_pub_polygons_->publish(polygons);
     path_pub_10km_->publish(path_10km_);
+
+
+    // load lanelet2 and project 
+    lanelet::projection::MGRSProjector projector;
+
+
   }
 };
+}  // namespace lanelet2_divider
 
-int main(int argc, char * argv[])
-{
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Lanelet2Divider>());
-  rclcpp::shutdown();
-  return 0;
-}
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(lanelet2_divider::Lanelet2Divider)

@@ -1,60 +1,81 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.5)
 project(lanelet2_divider)
-
-set(CMAKE_CXX_STANDARD 17)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
+find_package(GeographicLib REQUIRED)
 find_package(lanelet2 REQUIRED)
 find_package(GDAL REQUIRED)
-find_package(GeographicLib REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
-
 include_directories(include
-        ${rclcpp_INCLUDE_DIRS}
         ${lanelet2_INCLUDE_DIRS}
+        ${GDAL_INCLUDE_DIRS}
         ${GeographicLib_INCLUDE_DIRS}
         ${nav_msgs_INCLUDE_DIRS}
-        ${visualization_msgs_INCLUDE_DIRS}
-)
+        ${visualization_msgs_INCLUDE_DIRS})
 
-# Lanelet2 Divider
-add_executable(lanelet2_divider_exe
-        src/lanelet2_divider.cpp)
-ament_target_dependencies(lanelet2_divider_exe rclcpp lanelet2)
-target_link_libraries(lanelet2_divider_exe
+set(LANELET2_DIVIDER_LIB_SRC
+        src/lanelet2_divider.cpp
+        src/mgrs_projector.cpp)
+
+set(LANELET2_DIVIDER_LIB_HEADERS
+        include/lanelet2_divider/lanelet2_divider.hpp
+        include/lanelet2_divider/mgrs_projector.hpp)
+
+
+ament_auto_add_library(${PROJECT_NAME} SHARED
+        ${LANELET2_DIVIDER_LIB_HEADERS}
+        ${LANELET2_DIVIDER_LIB_SRC})
+target_link_libraries(${PROJECT_NAME}
         ${lanelet2_LIBRARIES}
+        ${GDAL_LIBRARIES}
         ${GeographicLib_LIBRARIES}
         ${nav_msgs_LIBRARIES}
-        ${visualization_msgs_LIBRARIES}
-        GDAL::GDAL)
+        ${visualization_msgs_LIBRARIES})
 
+#target_compile_options(${PROJECT_NAME} PRIVATE
+#  -Wall
+#  -Werror
+#  -Wextra
+#  #-Wshadow             # causes issues with ROS 2 headers
+#  #-Wnon-virtual-dtor   # causes issues with ROS 2 headers
+#  -pedantic
+#  -Wcast-align
+#  -Wunused
+#  -Wconversion
+#  -Wsign-conversion
+#  -Wdouble-promotion
+#  #-Wnull-dereference    # gcc6
+#  #-Wduplicated-branches # gcc7
+#  #-Wduplicated-cond     # gcc6
+#  #-Wrestrict            # gcc7
+#  -fvisibility=hidden)
+# C++-only options
 
-install(TARGETS lanelet2_divider_exe
-        DESTINATION lib/${PROJECT_NAME})
+rclcpp_components_register_node(${PROJECT_NAME}
+        PLUGIN "lanelet2_divider::Lanelet2Divider"
+        EXECUTABLE ${PROJECT_NAME}_exe)
 
-#install(DIRECTORY launch
-#        DESTINATION share/${PROJECT_NAME}/)
-#install(DIRECTORY config
-#        DESTINATION share/${PROJECT_NAME}/)
-
-if (BUILD_TESTING)
+if(BUILD_TESTING)
     find_package(ament_lint_auto REQUIRED)
-    # the following line skips the linter which checks for copyrights
-    # comment the line when a copyright and license is added to all source files
-    set(ament_cmake_copyright_FOUND TRUE)
-    # the following line skips cpplint (only works in a git repo)
-    # comment the line when this package is in a git repo and when
-    # a copyright and license is added to all source files
-    set(ament_cmake_cpplint_FOUND TRUE)
     ament_lint_auto_find_test_dependencies()
-endif ()
+endif()
 
-ament_package()
+#install(DIRECTORY
+#        launch
+#        DESTINATION share/${PROJECT_NAME}/
+#)
+#install(DIRECTORY
+#        params
+#        DESTINATION share/${PROJECT_NAME}
+#)
+
+ament_export_include_directories(include)
+ament_export_libraries({${PROJECT_NAME}_node})
+
+ament_auto_package()

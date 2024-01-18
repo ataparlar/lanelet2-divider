@@ -3,7 +3,7 @@
 <package format="3">
     <name>lanelet2_divider</name>
     <version>0.0.0</version>
-    <description>TODO: Package description</description>
+    <description>Lanelet2 map divider tool.</description>
     <maintainer email="ataparlar@leodrive.ai">Ata Parlar</maintainer>
     <license>TODO: License declaration</license>
 
@@ -11,8 +11,15 @@
     <buildtool_depend>ament_cmake</buildtool_depend>
 
     <depend>rclcpp</depend>
+    <depend>rclcpp_components</depend>
     <depend>lanelet2</depend>
-
+    <depend>lanelet2_core</depend>
+    <depend>lanelet2_io</depend>
+    <depend>lanelet2_maps</depend>
+    <depend>lanelet2_projection</depend>
+    <depend>lanelet2_routing</depend>
+    <depend>lanelet2_traffic_rules</depend>
+    <depend>lanelet2_validation</depend>
 
     <test_depend>ament_lint_auto</test_depend>
     <test_depend>ament_lint_common</test_depend>
