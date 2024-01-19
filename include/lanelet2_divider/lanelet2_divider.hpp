@@ -22,6 +22,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_10km_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_points_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_polygons_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_map_lanes_;
 
     bool origin_init_ = false;
 };

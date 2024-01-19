@@ -3,17 +3,15 @@
 //
 
 #include "lanelet2_divider/lanelet2_divider.hpp"
-#include "lanelet2_divider/mgrs_projector.hpp"
 
 #include "GeographicLib/UTMUPS.hpp"
-
-#include "ogrsf_frmts.h"
-#include <ogr_feature.h>
-
+#include "lanelet2_divider/mgrs_projector.hpp"
 #include "lanelet2_io/Io.h"
+#include "lanelet2_projection/UTM.h"
+#include "ogrsf_frmts.h"
+
 #include <lanelet2_io/io_handlers/Writer.h>
-
-
+#include <ogr_feature.h>
 
 namespace lanelet2_divider
 {
@@ -27,6 +25,8 @@ Lanelet2Divider::Lanelet2Divider(const rclcpp::NodeOptions & options)
     this->create_publisher<visualization_msgs::msg::Marker>("mgrs_grid_marker_points", 10);
   marker_pub_polygons_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("mgrs_grid_marker_polygons", 10);
+  marker_pub_map_lanes_ =
+    this->create_publisher<visualization_msgs::msg::MarkerArray>("lanelet2_map_markerarray", 10);
 
   visualization_msgs::msg::MarkerArray polygons;
   visualization_msgs::msg::Marker points, line_list;
@@ -146,14 +146,76 @@ Lanelet2Divider::Lanelet2Divider(const rclcpp::NodeOptions & options)
     marker_pub_points_->publish(points);
     marker_pub_polygons_->publish(polygons);
     path_pub_10km_->publish(path_10km_);
-
-
-    // load lanelet2 and project 
-    lanelet::projection::MGRSProjector projector;
-
-
   }
-};
+
+  visualization_msgs::msg::MarkerArray lanelet2_map;
+
+  // load lanelet2 and project
+  lanelet::projection::UtmProjector projector(lanelet::Origin({41.087436029, 28.785880712}));
+  lanelet::LaneletMapPtr map = lanelet::load(
+    "/home/ataparlar/projects/lanelet2_converter/commonroad-scenario-designer/export/ytu/"
+    "ytu_roads_rm_dup_lanelet2.osm",
+    projector);
+
+//  int marker_id = 1;
+//  for (const auto & lanelet : map->laneletLayer) {
+//    visualization_msgs::msg::Marker lanelet_line_list;
+//    lanelet_line_list.header.frame_id = "map";
+//    lanelet_line_list.header.stamp = this->get_clock()->now();
+//    lanelet_line_list.action = visualization_msgs::msg::Marker::ADD;
+//    lanelet_line_list.type = visualization_msgs::msg::Marker::LINE_LIST;
+//    lanelet_line_list.scale.x = 0.2;
+//    lanelet_line_list.color.b = 1.0;
+//    lanelet_line_list.color.a = 1.0;
+//    lanelet_line_list.ns = "lanelet2_map_polygon";
+//    lanelet_line_list.id = marker_id;
+//    for (const auto & point : lanelet.polygon2d()) {
+//      geometry_msgs::msg::Point p;
+//      p.x = point.x();
+//      p.y = point.y();
+//      p.z = 0;
+//      lanelet_line_list.points.push_back(p);
+//    }
+//    if (lanelet_line_list.points.size() % 2 == 1) {
+//      lanelet_line_list.points.push_back(
+//        lanelet_line_list.points.at(lanelet_line_list.points.size()));
+//    }
+//    lanelet2_map.markers.push_back(lanelet_line_list);
+//    marker_id++;
+//  }
+
+    int marker_id = 1;
+    for (const auto& linestring : map->lineStringLayer) {
+      visualization_msgs::msg::Marker lanelet_line_list;
+      lanelet_line_list.header.frame_id = "map";
+      lanelet_line_list.header.stamp = this->get_clock()->now();
+      lanelet_line_list.action = visualization_msgs::msg::Marker::ADD;
+      lanelet_line_list.type = visualization_msgs::msg::Marker::LINE_LIST;
+      lanelet_line_list.scale.x = 0.2;
+      lanelet_line_list.color.b = 1.0;
+      lanelet_line_list.color.a = 1.0;
+      lanelet_line_list.ns = "lanelet2_map_linestring";
+      lanelet_line_list.id = marker_id;
+      std::cout << "linestring.id(): " << linestring.id() << std::endl;
+      for (const auto& point : linestring) {
+        std::cout << "\tpoint.id(): " << point.id() << std::endl;
+        geometry_msgs::msg::Point p;
+        p.x = point.x();
+        p.y = point.y();
+        p.z = 0;
+        lanelet_line_list.points.push_back(p);
+      }
+      if (lanelet_line_list.points.size() % 2 == 1) {
+        lanelet_line_list.points.push_back(
+          lanelet_line_list.points.at(lanelet_line_list.points.size()-1));
+      }
+      lanelet2_map.markers.push_back(lanelet_line_list);
+      marker_id++;
+    }
+
+  marker_pub_map_lanes_->publish(lanelet2_map);
+}
+
 }  // namespace lanelet2_divider
 
 #include "rclcpp_components/register_node_macro.hpp"
